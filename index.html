@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        .loading {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .tab-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .notification {
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <!-- Header -->
+    <header class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg border-b border-white border-opacity-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-user-shield text-3xl text-white"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Face Recognition</h1>
+                        <p class="text-white text-opacity-70 text-sm">Management System</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-white text-right">
+                        <div class="text-sm opacity-70">Total Users</div>
+                        <div id="userCount" class="text-xl font-bold">0</div>
+                    </div>
+                    <div class="text-white text-right">
+                        <div class="text-sm opacity-70">System Status</div>
+                        <div id="systemStatus" class="text-xl font-bold">
+                            <i class="fas fa-circle text-green-400"></i> Online
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tab Navigation -->
+        <div class="mb-8">
+            <nav class="flex space-x-1 bg-white bg-opacity-10 p-1 rounded-lg backdrop-filter backdrop-blur-lg">
+                <button onclick="switchTab('register')" id="registerTab" class="tab-button flex-1 py-3 px-4 text-center rounded-lg font-medium transition-all tab-active">
+                    <i class="fas fa-user-plus mr-2"></i>Register User
+                </button>
+                <button onclick="switchTab('verify')" id="verifyTab" class="tab-button flex-1 py-3 px-4 text-center rounded-lg font-medium transition-all text-white">
+                    <i class="fas fa-search mr-2"></i>Verify User
+                </button>
+                <button onclick="switchTab('manage')" id="manageTab" class="tab-button flex-1 py-3 px-4 text-center rounded-lg font-medium transition-all text-white">
+                    <i class="fas fa-users mr-2"></i>Manage Users
+                </button>
+                <button onclick="switchTab('settings')" id="settingsTab" class="tab-button flex-1 py-3 px-4 text-center rounded-lg font-medium transition-all text-white">
+                    <i class="fas fa-cog mr-2"></i>Settings
+                </button>
+            </nav>
+        </div>
+
+        <!-- Register Tab -->
+        <div id="registerPanel" class="tab-panel">
+            <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20">
+                <div class="max-w-2xl mx-auto">
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">
+                        <i class="fas fa-user-plus mr-3"></i>Register New User
+                    </h2>
+                    
+                    <form id="registerForm" class="space-y-6">
+                        <div>
+                            <label class="block text-white text-sm font-medium mb-2">User Name</label>
+                            <input type="text" id="userName" required 
+                                   class="w-full px-4 py-3 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                                   placeholder="Enter user name (2-50 characters)">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white text-sm font-medium mb-2">Profile Photo</label>
+                            <div class="border-2 border-dashed border-white border-opacity-30 rounded-lg p-6 text-center">
+                                <input type="file" id="registerFile" accept="image/*" class="hidden">
+                                <div id="registerDropZone" onclick="document.getElementById('registerFile').click()" 
+                                     class="cursor-pointer">
+                                    <i class="fas fa-cloud-upload-alt text-4xl text-white mb-4"></i>
+                                    <p class="text-white text-lg">Click to upload or drag and drop</p>
+                                    <p class="text-white text-opacity-70 text-sm mt-2">JPG, PNG, BMP (Max 10MB)</p>
+                                </div>
+                                <div id="registerPreview" class="mt-4 hidden">
+                                    <img id="registerPreviewImg" class="preview-image mx-auto" alt="Preview">
+                                    <button type="button" onclick="clearRegisterImage()" 
+                                            class="mt-2 text-red-300 hover:text-red-100 text-sm">
+                                        <i class="fas fa-times mr-1"></i>Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="registerBtn" 
+                                class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                            <span id="registerBtnText">
+                                <i class="fas fa-user-plus mr-2"></i>Register User
+                            </span>
+                            <div id="registerLoading" class="loading mx-auto hidden"></div>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verify Tab -->
+        <div id="verifyPanel" class="tab-panel hidden">
+            <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20">
+                <div class="max-w-2xl mx-auto">
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">
+                        <i class="fas fa-search mr-3"></i>Verify User Identity
+                    </h2>
+                    
+                    <form id="verifyForm" class="space-y-6">
+                        <div>
+                            <label class="block text-white text-sm font-medium mb-2">Upload Photo</label>
+                            <div class="border-2 border-dashed border-white border-opacity-30 rounded-lg p-6 text-center">
+                                <input type="file" id="verifyFile" accept="image/*" class="hidden">
+                                <div id="verifyDropZone" onclick="document.getElementById('verifyFile').click()" 
+                                     class="cursor-pointer">
+                                    <i class="fas fa-camera text-4xl text-white mb-4"></i>
+                                    <p class="text-white text-lg">Click to upload verification photo</p>
+                                    <p class="text-white text-opacity-70 text-sm mt-2">JPG, PNG, BMP (Max 10MB)</p>
+                                </div>
+                                <div id="verifyPreview" class="mt-4 hidden">
+                                    <img id="verifyPreviewImg" class="preview-image mx-auto" alt="Preview">
+                                    <button type="button" onclick="clearVerifyImage()" 
+                                            class="mt-2 text-red-300 hover:text-red-100 text-sm">
+                                        <i class="fas fa-times mr-1"></i>Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="verifyBtn" 
+                                class="w-full bg-gradient-to-r from-green-500 to-teal-600 text-white py-3 px-6 rounded-lg font-medium hover:from-green-600 hover:to-teal-700 transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                            <span id="verifyBtnText">
+                                <i class="fas fa-search mr-2"></i>Verify Identity
+                            </span>
+                            <div id="verifyLoading" class="loading mx-auto hidden"></div>
+                        </button>
+                    </form>
+
+                    <!-- Verification Result -->
+                    <div id="verifyResult" class="mt-6 hidden">
+                        <div class="bg-white bg-opacity-10 rounded-lg p-6 border border-white border-opacity-20">
+                            <div id="verifySuccess" class="hidden">
+                                <div class="flex items-center mb-4">
+                                    <i class="fas fa-check-circle text-green-400 text-2xl mr-3"></i>
+                                    <div>
+                                        <h3 class="text-white text-lg font-semibold">Identity Verified!</h3>
+                                        <p class="text-white text-opacity-70">User successfully identified</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-white text-opacity-70">User:</span>
+                                        <span id="verifiedUser" class="text-white font-medium"></span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-white text-opacity-70">Match Confidence:</span>
+                                        <span id="matchPercentage" class="text-white font-medium"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="verifyFailure" class="hidden">
+                                <div class="flex items-center mb-4">
+                                    <i class="fas fa-times-circle text-red-400 text-2xl mr-3"></i>
+                                    <div>
+                                        <h3 class="text-white text-lg font-semibold">Verification Failed</h3>
+                                        <p class="text-white text-opacity-70">No matching user found</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-white text-opacity-70">Best Match:</span>
+                                        <span id="failurePercentage" class="text-white font-medium"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Tab -->
+        <div id="managePanel" class="tab-panel hidden">
+            <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-white">
+                        <i class="fas fa-users mr-3"></i>Manage Users
+                    </h2>
+                    <button onclick="refreshUsers()" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all">
+                        <i class="fas fa-refresh mr-2"></i>Refresh
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <input type="text" id="searchUsers" placeholder="Search users..." 
+                               class="w-full px-4 py-3 pl-12 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-lg text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-opacity-70"></i>
+                    </div>
+                </div>
+
+                <!-- Users Grid -->
+                <div id="usersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- User cards will be populated here -->
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="text-center py-12 hidden">
+                    <i class="fas fa-users text-6xl text-white text-opacity-30 mb-4"></i>
+                    <h3 class="text-white text-xl font-semibold mb-2">No Users Found</h3>
+                    <p class="text-white text-opacity-70">Start by registering your first user</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settingsPanel" class="tab-panel hidden">
+            <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20">
+                <h2 class="text-3xl font-bold text-white mb-6">
+                    <i class="fas fa-cog mr-3"></i>System Settings & Status
+                </h2>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- System Status -->
+                    <div class="bg-white bg-opacity-10 rounded-xl p-6 border border-white border-opacity-20">
+                        <h3 class="text-xl font-semibold text-white mb-4">
+                            <i class="fas fa-server mr-2"></i>System Status
+                        </h3>
+                        <div id="systemInfo" class="space-y-3">
+                            <!-- System info will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Configuration -->
+                    <div class="bg-white bg-opacity-10 rounded-xl p-6 border border-white border-opacity-20">
+                        <h3 class="text-xl font-semibold text-white mb-4">
+                            <i class="fas fa-sliders-h mr-2"></i>Configuration
+                        </h3>
+                        <div id="configInfo" class="space-y-3">
+                            <!-- Config info will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- API Endpoint -->
+                    <div class="bg-white bg-opacity-10 rounded-xl p-6 border border-white border-opacity-20 lg:col-span-2">
+                        <h3 class="text-xl font-semibold text-white mb-4">
+                            <i class="fas fa-link mr-2"></i>API Configuration
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-white text-sm font-medium mb-2">API Base URL</label>
+                                <div class="flex">
+                                    <input type="text" id="apiUrl" value="http://localhost:8000" 
+                                           class="flex-1 px-4 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-l-lg text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50">
+                                    <button onclick="updateApiUrl()" 
+                                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-lg transition-all">
+                                        Update
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20 max-w-md mx-4">
+            <div class="text-center">
+                <i class="fas fa-exclamation-triangle text-yellow-400 text-4xl mb-4"></i>
+                <h3 class="text-white text-xl font-semibold mb-4">Confirm Deletion</h3>
+                <p class="text-white text-opacity-70 mb-6">Are you sure you want to delete user "<span id="deleteUserName" class="font-medium"></span>"? This action cannot be undone.</p>
+                <div class="flex space-x-4">
+                    <button onclick="closeDeleteModal()" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-all">
+                        Cancel
+                    </button>
+                    <button onclick="confirmDelete()" id="confirmDeleteBtn"
+                            class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-all">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let apiUrl = 'http://localhost:8000';
+        let deleteUserToConfirm = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadSystemInfo();
+            loadConfig();
+            refreshUsers();
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-button').forEach(tab => {
+                tab.classList.remove('tab-active');
+                tab.classList.add('text-white');
+            });
+            
+            // Show selected panel
+            document.getElementById(tabName + 'Panel').classList.remove('hidden');
+            
+            // Add active class to selected tab
+            document.getElementById(tabName + 'Tab').classList.add('tab-active');
+            document.getElementById(tabName + 'Tab').classList.remove('text-white');
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Register form
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('registerFile').addEventListener('change', handleRegisterFileSelect);
+            
+            // Verify form
+            document.getElementById('verifyForm').addEventListener('submit', handleVerify);
+            document.getElementById('verifyFile').addEventListener('change', handleVerifyFileSelect);
+            
+            // Search users
+            document.getElementById('searchUsers').addEventListener('input', filterUsers);
+        }
+
+        // File handling for register
+        function handleRegisterFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (validateFile(file)) {
+                    showImagePreview(file, 'registerPreviewImg', 'registerPreview');
+                } else {
+                    clearRegisterImage();
+                }
+            }
+        }
+
+        function clearRegisterImage() {
+            document.getElementById('registerFile').value = '';
+            document.getElementById('registerPreview').classList.add('hidden');
+        }
+
+        // File handling for verify
+        function handleVerifyFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (validateFile(file)) {
+                    showImagePreview(file, 'verifyPreviewImg', 'verifyPreview');
+                    document.getElementById('verifyResult').classList.add('hidden');
+                } else {
+                    clearVerifyImage();
+                }
+            }
+        }
+
+        function clearVerifyImage() {
+            document.getElementById('verifyFile').value = '';
+            document.getElementById('verifyPreview').classList.add('hidden');
+            document.getElementById('verifyResult').classList.add('hidden');
+        }
+
+        // File validation
+        function validateFile(file) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp'];
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            
+            if (!allowedTypes.includes(file.type)) {
+                showNotification('Invalid file type. Please use JPG, PNG, or BMP.', 'error');
+                return false;
+            }
+            
+            if (file.size > maxSize) {
+                showNotification('File too large. Maximum size is 10MB.', 'error');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Show image preview
+        function showImagePreview(file, imgId, containerId) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById(imgId).src = e.target.result;
+                document.getElementById(containerId).classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Handle register form submission
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const userName = document.getElementById('userName').value.trim();
+            const fileInput = document.getElementById('registerFile');
+            const file = fileInput.files[0];
+            
+            if (!userName) {
+                showNotification('Please enter a user name.', 'error');
+                return;
+            }
+            
+            if (!file) {
+                showNotification('Please select an image file.', 'error');
+                return;
+            }
+            
+            setLoadingState('register', true);
+            
+            try {
+                const formData = new FormData();
+                formData.append('user_name', userName);
+                formData.append('file', file);
+                
+                const response = await fetch(`${apiUrl}/register_new_user`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('User registered successfully!', 'success');
+                    document.getElementById('registerForm').reset();
+                    clearRegisterImage();
+                    refreshUsers();
+                } else {
+                    showNotification(result.message || 'Registration failed.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Network error. Please check your connection.', 'error');
+            } finally {
+                setLoadingState('register', false);
+            }
+        }
+
+        // Handle verify form submission
+        async function handleVerify(event) {
+            event.preventDefault();
+            
+            const fileInput = document.getElementById('verifyFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('Please select an image file.', 'error');
+                return;
+            }
+            
+            setLoadingState('verify', true);
+            document.getElementById('verifyResult').classList.add('hidden');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${apiUrl}/verify_user`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('verifyResult').classList.remove('hidden');
+                
+                if (result.status === 'success') {
+                    document.getElementById('verifySuccess').classList.remove('hidden');
+                    document.getElementById('verifyFailure').classList.add('hidden');
+                    document.getElementById('verifiedUser').textContent = result.user;
+                    document.getElementById('matchPercentage').textContent = `${result.match_percentage}%`;
+                    showNotification('User verified successfully!', 'success');
+                } else {
+                    document.getElementById('verifyFailure').classList.remove('hidden');
+                    document.getElementById('verifySuccess').classList.add('hidden');
+                    document.getElementById('failurePercentage').textContent = result.match_percentage ? `${result.match_percentage}%` : 'N/A';
+                    showNotification(result.message || 'Verification failed.', 'warning');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Network error. Please check your connection.', 'error');
+                document.getElementById('verifyResult').classList.add('hidden');
+            } finally {
+                setLoadingState('verify', false);
+            }
+        }
+
+        // Load system info
+        async function loadSystemInfo() {
+            try {
+                const response = await fetch(`${apiUrl}/health`);
+                const result = await response.json();
+                
+                document.getElementById('userCount').textContent = result.total_users || 0;
+                
+                const systemInfo = document.getElementById('systemInfo');
+                systemInfo.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Status:</span>
+                        <span class="text-green-400 font-medium">
+                            <i class="fas fa-circle mr-1"></i>Online
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Version:</span>
+                        <span class="text-white font-medium">${result.version || 'N/A'}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Total Users:</span>
+                        <span class="text-white font-medium">${result.total_users || 0}</span>
+                    </div>
+                `;
+                
+                document.getElementById('systemStatus').innerHTML = '<i class="fas fa-circle text-green-400"></i> Online';
+            } catch (error) {
+                console.error('Error loading system info:', error);
+                document.getElementById('systemStatus').innerHTML = '<i class="fas fa-circle text-red-400"></i> Offline';
+            }
+        }
+
+        // Load config
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${apiUrl}/config`);
+                const result = await response.json();
+                
+                const configInfo = document.getElementById('configInfo');
+                configInfo.innerHTML = `
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Max File Size:</span>
+                        <span class="text-white font-medium">${result.max_file_size_mb}MB</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Max Users:</span>
+                        <span class="text-white font-medium">${result.max_users}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Model:</span>
+                        <span class="text-white font-medium">${result.model.toUpperCase()}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-white text-opacity-70">Threshold:</span>
+                        <span class="text-white font-medium">${result.similarity_threshold}</span>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+
+        // Refresh users list
+        async function refreshUsers() {
+            try {
+                const response = await fetch(`${apiUrl}/users`);
+                const users = await response.json();
+                
+                displayUsers(users);
+                document.getElementById('userCount').textContent = users.length;
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showNotification('Failed to load users.', 'error');
+            }
+        }
+
+        // Display users in grid
+        function displayUsers(users) {
+            const grid = document.getElementById('usersGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (users.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            grid.innerHTML = users.map(user => `
+                <div class="bg-white bg-opacity-10 rounded-xl p-6 border border-white border-opacity-20 card-hover">
+                    <div class="text-center">
+                        <div class="w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-white font-semibold text-lg mb-2">${escapeHtml(user)}</h3>
+                        <p class="text-white text-opacity-70 text-sm mb-4">Registered User</p>
+                        <div class="space-y-2">
+                            <button onclick="viewUserImage('${escapeHtml(user)}')" 
+                                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-all text-sm">
+                                <i class="fas fa-eye mr-2"></i>View Image
+                            </button>
+                            <button onclick="deleteUser('${escapeHtml(user)}')" 
+                                    class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition-all text-sm">
+                                <i class="fas fa-trash mr-2"></i>Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter users
+        function filterUsers() {
+            const searchTerm = document.getElementById('searchUsers').value.toLowerCase();
+            const userCards = document.querySelectorAll('#usersGrid > div');
+            
+            userCards.forEach(card => {
+                const userName = card.querySelector('h3').textContent.toLowerCase();
+                if (userName.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // View user image
+        function viewUserImage(userName) {
+            // Create modal to display user image
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-2xl p-8 border border-white border-opacity-20 max-w-lg mx-4">
+                    <div class="text-center">
+                        <h3 class="text-white text-xl font-semibold mb-4">${escapeHtml(userName)}</h3>
+                        <div class="mb-4">
+                            <img src="${apiUrl}/db/${encodeURIComponent(userName)}.png" 
+                                 alt="${escapeHtml(userName)}" 
+                                 class="max-w-full max-h-80 mx-auto rounded-lg"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <div class="hidden text-white text-opacity-70">
+                                <i class="fas fa-image text-4xl mb-2"></i>
+                                <p>Image not available</p>
+                            </div>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-lg transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Close on backdrop click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // Delete user
+        function deleteUser(userName) {
+            deleteUserToConfirm = userName;
+            document.getElementById('deleteUserName').textContent = userName;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        // Close delete modal
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            deleteUserToConfirm = null;
+        }
+
+        // Confirm delete
+        async function confirmDelete() {
+            if (!deleteUserToConfirm) return;
+            
+            const btn = document.getElementById('confirmDeleteBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loading mx-auto"></div>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`${apiUrl}/users/${encodeURIComponent(deleteUserToConfirm)}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification('User deleted successfully!', 'success');
+                    refreshUsers();
+                    closeDeleteModal();
+                } else {
+                    showNotification(result.message || 'Failed to delete user.', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Network error. Please check your connection.', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Update API URL
+        function updateApiUrl() {
+            const newUrl = document.getElementById('apiUrl').value.trim();
+            if (newUrl) {
+                apiUrl = newUrl;
+                showNotification('API URL updated successfully!', 'success');
+                // Refresh data with new URL
+                loadSystemInfo();
+                loadConfig();
+                refreshUsers();
+            }
+        }
+
+        // Set loading state
+        function setLoadingState(type, loading) {
+            const btn = document.getElementById(`${type}Btn`);
+            const btnText = document.getElementById(`${type}BtnText`);
+            const loadingEl = document.getElementById(`${type}Loading`);
+            
+            if (loading) {
+                btnText.classList.add('hidden');
+                loadingEl.classList.remove('hidden');
+                btn.disabled = true;
+            } else {
+                btnText.classList.remove('hidden');
+                loadingEl.classList.add('hidden');
+                btn.disabled = false;
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            
+            const icons = {
+                success: 'fas fa-check-circle text-green-400',
+                error: 'fas fa-times-circle text-red-400',
+                warning: 'fas fa-exclamation-triangle text-yellow-400',
+                info: 'fas fa-info-circle text-blue-400'
+            };
+            
+            const colors = {
+                success: 'border-green-400',
+                error: 'border-red-400',
+                warning: 'border-yellow-400',
+                info: 'border-blue-400'
+            };
+            
+            notification.className = `notification bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg border-l-4 ${colors[type]} rounded-lg p-4 shadow-lg`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="${icons[type]} mr-3"></i>
+                    <span class="text-white">${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            class="ml-auto text-white text-opacity-70 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Show animation
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // Handle drag and drop for file inputs
+        ['registerDropZone', 'verifyDropZone'].forEach(zoneId => {
+            const zone = document.getElementById(zoneId);
+            
+            zone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('border-blue-400');
+            });
+            
+            zone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.classList.remove('border-blue-400');
+            });
+            
+            zone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('border-blue-400');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const fileInput = zoneId === 'registerDropZone' ? 
+                        document.getElementById('registerFile') : 
+                        document.getElementById('verifyFile');
+                    
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Alt + 1-4 for tab switching
+            if (e.altKey) {
+                switch(e.key) {
+                    case '1':
+                        switchTab('register');
+                        e.preventDefault();
+                        break;
+                    case '2':
+                        switchTab('verify');
+                        e.preventDefault();
+                        break;
+                    case '3':
+                        switchTab('manage');
+                        e.preventDefault();
+                        break;
+                    case '4':
+                        switchTab('settings');
+                        e.preventDefault();
+                        break;
+                }
+            }
+            
+            // Escape key to close modals
+            if (e.key === 'Escape') {
+                const deleteModal = document.getElementById('deleteModal');
+                if (!deleteModal.classList.contains('hidden')) {
+                    closeDeleteModal();
+                }
+                
+                // Close image modals
+                const imageModals = document.querySelectorAll('.fixed.inset-0');
+                imageModals.forEach(modal => {
+                    if (modal.id !== 'deleteModal') {
+                        modal.remove();
+                    }
+                });
+            }
+        });
+
+        // Auto-refresh system status every 30 seconds
+        setInterval(() => {
+            loadSystemInfo();
+        }, 30000);
+
+        // Add tooltips for better UX
+        function addTooltips() {
+            const tooltips = {
+                'registerTab': 'Alt+1 - Register a new user',
+                'verifyTab': 'Alt+2 - Verify user identity',
+                'manageTab': 'Alt+3 - Manage existing users',
+                'settingsTab': 'Alt+4 - View system settings'
+            };
+            
+            Object.keys(tooltips).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.title = tooltips[id];
+                }
+            });
+        }
+
+        // Initialize tooltips after DOM is loaded
+        document.addEventListener('DOMContentLoaded', addTooltips);
+    </script>
+</body>
+</html>
