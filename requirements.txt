@@ -1,6 +1,6 @@
 fastapi
-uvicorn
-python-multipart
-opencv-python
-face-recognition
+uvicorn[standard]
 numpy
+opencv-python-headless
+face-recognition
+dlib-bin
