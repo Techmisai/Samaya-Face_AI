@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pip
+
+RUN pip install dlib-bin
 
 COPY requirements.txt .
 
