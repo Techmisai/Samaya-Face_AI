@@ -4,3 +4,4 @@ numpy
 opencv-python-headless
 python-multipart
 pillow
+face-recognition-models
