@@ -13,11 +13,16 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --upgrade pip
 
+# install prebuilt dlib
 RUN pip install dlib-bin
 
 COPY requirements.txt .
 
+# install other deps first
 RUN pip install --prefer-binary -r requirements.txt
+
+# reinstall face-recognition without deps (prevents dlib compile)
+RUN pip install face-recognition --no-deps
 
 COPY . .
 
