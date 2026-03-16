@@ -28,7 +28,7 @@ class Config:
     DB_PATH = Path('./db')
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp'}
-    FACE_RECOGNITION_MODEL = "cnn"  # or "hog" for faster but less accurate
+    FACE_RECOGNITION_MODEL = "hog"  # or "hog" for faster but less accurate
     SIMILARITY_THRESHOLD = 0.5
     MAX_USERS = 1000
     TEMP_DIR = Path('./temp')
@@ -143,6 +143,22 @@ class FaceDatabase:
 class FaceRecognitionService:
     def __init__(self, db: FaceDatabase):
         self.db = db
+        self.embeddings_cache = {}
+
+        users = self.db.get_all_users()
+        for user_name in users:
+            try:
+                embeddings = self.db.load_user_embeddings(user_name)
+
+                if isinstance(embeddings, list):
+                    embeddings = embeddings[0]
+
+                self.embeddings_cache[user_name] = embeddings
+
+            except Exception as e:
+                logger.error(f"Failed loading embedding for {user_name}: {e}")
+
+        logger.info(f"Loaded {len(self.embeddings_cache)} embeddings into memory")
     
     def extract_face_embeddings(self, image: np.ndarray, enforce_single_face: bool = True) -> np.ndarray:
         """Extract face embeddings from image"""
@@ -178,21 +194,14 @@ class FaceRecognitionService:
             logger.error(f"Error in face recognition: {str(e)}")
             return 'error', False, 0.0
         
-        users = self.db.get_all_users()
-        if not users:
+        if not self.embeddings_cache:
             return 'unknown_person', False, 0.0
         
         best_match_distance = float('inf')
         best_match_name = 'unknown_person'
         
-        for user_name in users:
+        for user_name, embedding in self.embeddings_cache.items():
             try:
-                embeddings = self.db.load_user_embeddings(user_name)
-                # Handle both single embedding and list of embeddings
-                if isinstance(embeddings, list):
-                    embedding = embeddings[0]
-                else:
-                    embedding = embeddings
                 
                 distance = face_recognition.face_distance([embedding], unknown_embedding)[0]
                 
