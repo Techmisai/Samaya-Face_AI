@@ -2,5 +2,5 @@ fastapi
 uvicorn[standard]
 numpy
 opencv-python-headless
-face-recognition
+face-recognition --no-deps
 python-multipart
