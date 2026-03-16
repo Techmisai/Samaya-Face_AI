@@ -18,10 +18,9 @@ RUN pip install dlib-bin
 
 COPY requirements.txt .
 
-# install other deps first
 RUN pip install --prefer-binary -r requirements.txt
 
-# reinstall face-recognition without deps (prevents dlib compile)
+# install face-recognition without installing dlib again
 RUN pip install face-recognition --no-deps
 
 COPY . .
