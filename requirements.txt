@@ -4,4 +4,5 @@ numpy
 opencv-python-headless
 python-multipart
 pillow
+faiss-cpu
 git+https://github.com/ageitgey/face_recognition_models

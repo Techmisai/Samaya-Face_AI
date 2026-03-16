@@ -8,12 +8,13 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, status
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import face_recognition
 import numpy as np
+import faiss
 
 logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger=logging.getLogger(__name__)
@@ -23,9 +24,11 @@ class Config:
     MAX_FILE_SIZE=10*1024*1024
     ALLOWED_EXTENSIONS={'.jpg','.jpeg','.png','.bmp'}
     FACE_RECOGNITION_MODEL="hog"
-    SIMILARITY_THRESHOLD=0.5
+    SIMILARITY_THRESHOLD=0.48
     MAX_USERS=1000
     TEMP_DIR=Path('./temp')
+    RESIZE_SCALE=0.25
+    EMBEDDING_SIZE=128
 
 class UserResponse(BaseModel):
     status:str
@@ -114,7 +117,7 @@ class FaceRecognitionService:
     def __init__(self,db:FaceDatabase):
         self.db=db
         self.user_names=[]
-        self.embeddings_matrix=[]
+        embeddings=[]
 
         users=self.db.get_all_users()
 
@@ -125,14 +128,19 @@ class FaceRecognitionService:
                 if isinstance(emb,list):
                     emb=emb[0]
 
+                embeddings.append(emb)
                 self.user_names.append(user_name)
-                self.embeddings_matrix.append(emb)
 
-            except Exception as e:
+            except Exception:
                 logger.error(f"Embedding load failed for {user_name}")
 
-        if len(self.embeddings_matrix)>0:
-            self.embeddings_matrix=np.vstack(self.embeddings_matrix)
+        if len(embeddings)>0:
+            self.embeddings_matrix=np.vstack(embeddings).astype("float32")
+            self.index=faiss.IndexFlatL2(Config.EMBEDDING_SIZE)
+            self.index.add(self.embeddings_matrix)
+        else:
+            self.embeddings_matrix=None
+            self.index=None
 
         logger.info(f"Loaded {len(self.user_names)} embeddings")
 
@@ -141,7 +149,7 @@ class FaceRecognitionService:
         if len(image.shape)==3 and image.shape[2]==3:
             image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
 
-        image=cv2.resize(image,(0,0),fx=0.5,fy=0.5)
+        image=cv2.resize(image,(0,0),fx=Config.RESIZE_SCALE,fy=Config.RESIZE_SCALE)
 
         face_locations=face_recognition.face_locations(
             image,
@@ -160,7 +168,7 @@ class FaceRecognitionService:
         if enforce_single_face and len(embeddings)>1:
             raise MultipleFacesError()
 
-        return embeddings[0]
+        return embeddings[0].astype("float32")
 
     def recognize_face(self,image:np.ndarray)->Tuple[str,bool,float]:
 
@@ -169,13 +177,15 @@ class FaceRecognitionService:
         except NoFaceDetectedError:
             return 'no_persons_found',False,0.0
 
-        if len(self.user_names)==0:
+        if self.index is None:
             return 'unknown_person',False,0.0
 
-        distances=face_recognition.face_distance(self.embeddings_matrix,unknown_embedding)
+        unknown_embedding=unknown_embedding.reshape(1,-1).astype("float32")
 
-        best_index=np.argmin(distances)
-        best_distance=distances[best_index]
+        distances,indices=self.index.search(unknown_embedding,1)
+
+        best_index=indices[0][0]
+        best_distance=distances[0][0]
 
         match_percentage=max(0,(1-best_distance)*100)
 
@@ -233,7 +243,7 @@ async def lifespan(app:FastAPI):
 app=FastAPI(
     title="Face Recognition System",
     description="Face recognition API",
-    version="2.0.0",
+    version="2.1.0",
     lifespan=lifespan
 )
 
@@ -335,7 +345,7 @@ def health_check():
     return {
         "status":"healthy",
         "total_users":len(db.get_all_users()),
-        "version":"2.0.0"
+        "version":"2.1.0"
     }
 
 @app.get("/config")
