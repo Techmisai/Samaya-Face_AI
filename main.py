@@ -24,10 +24,10 @@ class Config:
     MAX_FILE_SIZE=10*1024*1024
     ALLOWED_EXTENSIONS={'.jpg','.jpeg','.png','.bmp'}
     FACE_RECOGNITION_MODEL="hog"
-    SIMILARITY_THRESHOLD=0.48
+    SIMILARITY_THRESHOLD=0.40
     MAX_USERS=1000
     TEMP_DIR=Path('./temp')
-    RESIZE_SCALE=0.25
+    RESIZE_SCALE=0.5
     EMBEDDING_SIZE=128
 
 class UserResponse(BaseModel):
@@ -116,6 +116,9 @@ class FaceDatabase:
 class FaceRecognitionService:
     def __init__(self,db:FaceDatabase):
         self.db=db
+        self.reload_index()
+
+    def reload_index(self):
         self.user_names=[]
         embeddings=[]
 
@@ -284,6 +287,8 @@ async def register_new_user(file:UploadFile=File(...),user_name:str=Form(...)):
 
         db.save_user(user_name,embeddings,image_data)
 
+        face_service.reload_index()
+
         return UserResponse(
             status="success",
             message="User registered successfully",
@@ -334,6 +339,8 @@ def get_all_users():
 def delete_user(user_name:str):
 
     db.delete_user(user_name)
+
+    face_service.reload_index()
 
     return UserResponse(
         status="success",
